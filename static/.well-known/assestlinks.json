@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.social_downloader_v5r2.twa",
+        "sha256_cert_fingerprints": ["48:F6:01:85:D7:EB:E7:C5:02:1A:DF:94:97:86:B3:75:F0:BC:D7:03:CD:8F:5B:1C:78:26:FF:91:BA:F2:73:E0"]
+      }
+    }]
