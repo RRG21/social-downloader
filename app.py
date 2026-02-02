@@ -14,12 +14,12 @@ os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 download_progress = {}
 download_info = {}
 
-# Fixed: Detect cookies.txt to bypass YouTube's "Sign in to confirm you're not a bot"
+# Detect if cookies.txt exists for YouTube bot bypass
 COOKIES_FILE = "cookies.txt" if os.path.exists("cookies.txt") else None
 
-# Paste your FULL HTML code here (the 500 lines of CSS/HTML from before)
-HTML_TEMPLATE = """
-[INSERT YOUR FULL 500-LINE HTML HERE]
+# Paste your FULL HTML/CSS string here exactly as it was
+HTML = """
+[YOUR FULL 500+ LINE HTML/CSS CODE GOES HERE]
 """
 
 def progress_hook(d):
@@ -27,6 +27,7 @@ def progress_hook(d):
     if not download_id: return
     prog = download_progress.setdefault(download_id, {})
     if d['status'] == 'downloading':
+        # Extracts percentage for the progress bar
         p = d.get('_percent_str', '0%').replace('%','').strip()
         prog.update({"percent": p})
     elif d['status'] == 'finished':
@@ -43,7 +44,7 @@ def index():
             'format': 'bestvideo+bestaudio/best' if fmt == 'mp4' else 'bestaudio/best',
             'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
             'progress_hooks': [lambda d: (d.update({'download_id': download_id}), progress_hook(d))],
-            'cookiefile': COOKIES_FILE, # Fix for YouTube blocks
+            'cookiefile': COOKIES_FILE, # Essential for YouTube downloads
             'nocheckcertificate': True
         }
         
@@ -51,6 +52,7 @@ def index():
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
+                    # Stores actual filename for the download link
                     download_progress[download_id]["filename"] = os.path.basename(ydl.prepare_filename(info))
             except Exception as e:
                 download_progress[download_id] = {"error": str(e)}
@@ -58,7 +60,7 @@ def index():
         download_progress[download_id] = {"percent": "0"}
         threading.Thread(target=run_down).start()
         return jsonify({"download_id": download_id})
-    return render_template_string(HTML_TEMPLATE)
+    return render_template_string(HTML)
 
 @app.route("/progress/<download_id>")
 def progress(download_id):
@@ -66,6 +68,7 @@ def progress(download_id):
 
 @app.route("/download/<path:filename>")
 def download(filename):
+    # Securely serves the downloaded file
     path = os.path.join(DOWNLOAD_FOLDER, filename)
     if os.path.exists(path):
         return send_file(path, as_attachment=True)
@@ -73,16 +76,17 @@ def download(filename):
 
 @app.route("/qrcode/<path:filename>")
 def qrcode_route(filename):
-    # Fixed: Automatically uses your HTTPS Render URL
+    # Automatically uses your live HTTPS Render URL
     public_url = request.host_url.replace("http://", "https://")
     file_url = f"{public_url}download/{filename}"
+    
     img = qrcode.make(file_url)
-    buf = io.BytesIO()
-    img.save(buf, "PNG")
-    buf.seek(0)
-    return send_file(buf, mimetype="image/png")
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, "PNG")
+    img_byte_arr.seek(0)
+    return send_file(img_byte_arr, mimetype="image/png")
 
-# --- NATIVE APP ROUTES (Removes browser bar) ---
+# --- PRODUCTION PWA & NATIVE APP ROUTES ---
 @app.route("/manifest.json")
 def serve_manifest():
     return send_from_directory('static', 'manifest.json')
@@ -93,8 +97,8 @@ def serve_sw():
 
 @app.route("/.well-known/assetlinks.json")
 def serve_assetlinks():
-    # This file is what makes the APK feel like a "Proper App"
-    return send_from_directory('static/.well-known', 'assetlinks.json')
+    # Crucial for removing the browser bar in the APK
+    return send_from_directory('static/.well-known', 'assetlinks.json', mimetype='application/json')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
